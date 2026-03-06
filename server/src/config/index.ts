@@ -1,8 +1,7 @@
 import dotenv from "dotenv";
-import path from "path";
 
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
-dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+// Load .env for local dev. On Railway/production, vars are injected by the platform.
+dotenv.config();
 
 export const config = {
   nodeEnv: process.env.NODE_ENV || "development",

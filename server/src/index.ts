@@ -26,8 +26,8 @@ app.use(
       "http://localhost:3000",
       "http://localhost:3002",
       "http://localhost:8081",
-      "https://web-seven-rho-32.vercel.app",
       /\.vercel\.app$/,
+      /\.railway\.app$/,
     ],
     credentials: true,
   })
