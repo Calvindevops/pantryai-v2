@@ -1,0 +1,311 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Users ───────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile         UserProfile?
+  pantryItems     PantryItem[]
+  recipes         Recipe[]
+  userRecipes     UserRecipe[]
+  mealPlans       MealPlan[]
+  nutritionLogs   NutritionLog[]
+  cookingSessions CookingSession[]
+  groceryLists    GroceryList[]
+  scanHistory     ScanHistory[]
+  fridgeChallenges FridgeChallenge[]
+  amiEvents       AmiEvent[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  skillLevel         String   @default("beginner") // beginner | intermediate | advanced
+  dietaryRestrictions String[] @default([])
+  allergies          String[] @default([])
+  appliances         String[] @default([])
+  cuisinePreferences String[] @default([])
+  calorieGoal        Int?
+  proteinGoal        Int?
+  carbGoal           Int?
+  fatGoal            Int?
+  budgetPerWeek      Float?
+  householdSize      Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+// ─── Ingredients & Pantry ────────────────────────────────────────
+
+model Ingredient {
+  id       String @id @default(uuid())
+  name     String @unique
+  category String // produce | dairy | protein | grain | spice | condiment | other
+  unit     String @default("unit")
+  shelfLifeDays Int?
+  imageUrl String?
+
+  pantryItems       PantryItem[]
+  recipeIngredients RecipeIngredient[]
+
+  @@index([category])
+  @@map("ingredients")
+}
+
+model PantryItem {
+  id           String    @id @default(uuid())
+  userId       String
+  ingredientId String
+  quantity     Float     @default(1)
+  unit         String    @default("unit")
+  expiresAt    DateTime?
+  addedAt      DateTime  @default(now())
+  source       String    @default("manual") // manual | scan | grocery
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("pantry_items")
+}
+
+// ─── Recipes ─────────────────────────────────────────────────────
+
+model Recipe {
+  id              String   @id @default(uuid())
+  creatorId       String
+  title           String
+  description     String?
+  cuisineType     String?
+  skillLevel      String   @default("beginner")
+  prepTimeMinutes Int      @default(0)
+  cookTimeMinutes Int      @default(0)
+  servings        Int      @default(2)
+  calories        Int?
+  protein         Float?
+  carbs           Float?
+  fat             Float?
+  imageUrl        String?
+  tags            String[] @default([])
+  isAiGenerated   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  creator         User               @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  ingredients     RecipeIngredient[]
+  steps           RecipeStep[]
+  userRecipes     UserRecipe[]
+  mealPlanItems   MealPlanItem[]
+  cookingSessions CookingSession[]
+
+  @@index([creatorId])
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id           String  @id @default(uuid())
+  recipeId     String
+  ingredientId String
+  quantity     Float
+  unit         String
+  isOptional   Boolean @default(false)
+
+  recipe     Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@map("recipe_ingredients")
+}
+
+model RecipeStep {
+  id          String @id @default(uuid())
+  recipeId    String
+  stepNumber  Int
+  instruction String
+  durationMin Int?
+  tip         String?
+
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@map("recipe_steps")
+}
+
+model UserRecipe {
+  id       String   @id @default(uuid())
+  userId   String
+  recipeId String
+  rating   Int?
+  notes    String?
+  savedAt  DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@map("user_recipes")
+}
+
+// ─── Meal Plans ──────────────────────────────────────────────────
+
+model MealPlan {
+  id        String   @id @default(uuid())
+  userId    String
+  weekStart DateTime
+  weekEnd   DateTime
+  createdAt DateTime @default(now())
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items MealPlanItem[]
+
+  @@index([userId])
+  @@map("meal_plans")
+}
+
+model MealPlanItem {
+  id         String @id @default(uuid())
+  mealPlanId String
+  recipeId   String
+  dayOfWeek  Int    // 0=Mon .. 6=Sun
+  mealType   String // breakfast | lunch | dinner | snack
+
+  mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  recipe   Recipe   @relation(fields: [recipeId], references: [id])
+
+  @@map("meal_plan_items")
+}
+
+// ─── Nutrition ───────────────────────────────────────────────────
+
+model NutritionLog {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @default(now())
+  mealType  String   // breakfast | lunch | dinner | snack
+  label     String
+  calories  Int      @default(0)
+  protein   Float    @default(0)
+  carbs     Float    @default(0)
+  fat       Float    @default(0)
+  source    String   @default("manual") // manual | cook_session | scan
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("nutrition_logs")
+}
+
+// ─── Cooking Sessions ────────────────────────────────────────────
+
+model CookingSession {
+  id            String    @id @default(uuid())
+  userId        String
+  recipeId      String
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  currentStep   Int       @default(0)
+  status        String    @default("in_progress") // in_progress | completed | abandoned
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id])
+
+  @@index([userId])
+  @@map("cooking_sessions")
+}
+
+// ─── Grocery ─────────────────────────────────────────────────────
+
+model GroceryList {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String   @default("My List")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items GroceryListItem[]
+
+  @@index([userId])
+  @@map("grocery_lists")
+}
+
+model GroceryListItem {
+  id            String  @id @default(uuid())
+  groceryListId String
+  name          String
+  quantity      Float   @default(1)
+  unit          String  @default("unit")
+  checked       Boolean @default(false)
+  source        String  @default("manual") // manual | recipe | meal_plan
+
+  groceryList GroceryList @relation(fields: [groceryListId], references: [id], onDelete: Cascade)
+
+  @@map("grocery_list_items")
+}
+
+// ─── Scan History ────────────────────────────────────────────────
+
+model ScanHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  scanType  String   // barcode | single_item | fridge
+  imageUrl  String?
+  result    Json     // detected items, stats, etc.
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("scan_history")
+}
+
+// ─── Fridge Challenges ───────────────────────────────────────────
+
+model FridgeChallenge {
+  id         String   @id @default(uuid())
+  userId     String
+  shareCode  String   @unique @default(uuid())
+  itemCount  Int      @default(0)
+  topItems   String[] @default([])
+  stats      Json?
+  imageUrl   String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("fridge_challenges")
+}
+
+// ─── AMI (Adaptive Memory Intelligence) Events ───────────────────
+
+model AmiEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  eventType String   // recipe_viewed | recipe_cooked | ingredient_liked | ingredient_disliked | cuisine_chosen | feedback
+  payload   Json
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, eventType])
+  @@map("ami_events")
+}

@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "PantryAI",
+    "slug": "pantryai",
+    "version": "1.0.0",
+    "scheme": "pantryai",
+    "platforms": ["ios", "android"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "PantryAI needs camera access to scan your groceries and fridge."
+        }
+      ]
+    ],
+    "ios": {
+      "bundleIdentifier": "com.pantryai.app"
+    },
+    "android": {
+      "package": "com.pantryai.app"
+    }
+  }
+}
