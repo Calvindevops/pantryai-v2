@@ -58,9 +58,10 @@ app.use("/api/social", socialRoutes);
 
 app.use(errorHandler);
 
-const host = process.env.RAILWAY_ENVIRONMENT ? "0.0.0.0" : "127.0.0.1";
-app.listen(config.port, host, () => {
-  logger.info(`PantryAI server running on ${host}:${config.port}`);
+const port = parseInt(process.env.PORT || "3001", 10);
+const host = "0.0.0.0";
+app.listen(port, host, () => {
+  logger.info(`PantryAI server running on ${host}:${port}`);
 });
 
 export default app;
