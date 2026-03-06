@@ -26,6 +26,8 @@ app.use(
       "http://localhost:3000",
       "http://localhost:3002",
       "http://localhost:8081",
+      "https://web-seven-rho-32.vercel.app",
+      /\.vercel\.app$/,
     ],
     credentials: true,
   })
@@ -56,8 +58,9 @@ app.use("/api/social", socialRoutes);
 
 app.use(errorHandler);
 
-app.listen(config.port, () => {
-  logger.info(`PantryAI server running on port ${config.port}`);
+const host = process.env.RAILWAY_ENVIRONMENT ? "0.0.0.0" : "127.0.0.1";
+app.listen(config.port, host, () => {
+  logger.info(`PantryAI server running on ${host}:${config.port}`);
 });
 
 export default app;
